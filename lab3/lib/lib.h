@@ -17,7 +17,7 @@ int printf(const char *format,...);
 
 pid_t fork();
 
-int exec(uint32_t sec_start, uint32_t sec_num);
+int exec(uint32_t sec_start, uint32_t sec_num,int argc,char ** argv);
 
 int sleep(uint32_t time);
 

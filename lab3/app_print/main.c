@@ -1,7 +1,11 @@
 #include "lib.h"
 #include "types.h"
 
-int main(void) {
+int main(int argc,char**argv) {
+	
+	for(int i =0;i<argc;++i)
+		printf("paremeter%d: %s\n",i,argv[i]);
+
 	printf("printf test begin...\n");
 	printf("the answer should be:\n");
 	printf("#######################################################\n");

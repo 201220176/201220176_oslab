@@ -5,6 +5,7 @@
 #define va_to_pa(va) (va + (current + 1) * 0x100000)
 #define pa_to_va(pa) (pa - (current + 1) * 0x100000)
 
+extern SegDesc gdt[NR_SEGMENTS];
 extern TSS tss;
 extern int displayRow;
 extern int displayCol;
@@ -246,17 +247,60 @@ void syscallExec(struct StackFrame *sf) {
 	uint32_t entry = 0;
 	uint32_t secstart = sf->ecx;
 	uint32_t secnum =  sf->edx;
-	
-	int ret = loadelf(secstart,secnum, (current + 1) * 0x100000, &entry);
+
+	SegDesc seg = gdt[sf->ss >> 3];
+	uint32_t base = (seg.base_31_24 << 24) | (seg.base_23_16 << 16) | seg.base_15_0;
+	int argc=sf->ebx;
+	//point to user stack
+	char **argv=(void*)sf->esi+base;
+	//compute the maxlen of paremeter
+	int lenmax = 0;
+	for(int i=0;i<argc;++i)
+	{
+		int len = 0;
+		for (char *s=argv[i]+base; *s; ++s) ++len;
+		++len;
+		if (len > lenmax) {
+			lenmax = len;
+		}
+	}
+	//copy the paremeter from user stack to kernel stack
+	char args[argc][lenmax];
+	for(int i=0;i<argc;++i)
+	{
+		char *d=args[i];
+		for (char *s=argv[i]+base; *s; ++s, ++d) *d=*s;
+		*d='\0';
+	}
+
+	loadelf(secstart,secnum, (current + 1) * 0x100000, &entry);
 	putChar('E');
-	if (ret == 0)
+
+	//copy the paremeter str to the user 's esp
+	sf->eip = entry;
+	sf->esp -= argc * lenmax;
+	char (*argd)[lenmax] = (void *)(base + sf->esp);
+	for(int i=0;i<argc;++i)
 	{
-		sf->eip = entry;
+		char *d=argd[i];
+		for (char *s=args[i]; *s; ++s, ++d) *d=*s;
+		*d='\0';
 	}
-	else if (ret == -1)
+	//push the pointer pointing to  paremeter str to the user's esp
+	sf->esp -= argc * 4;
+	char **p = (void *)(base + sf->esp);
+	for(int i=0;i<argc;++i)
 	{
-		sf->eax = -1;
+		p[i]=(void *)&argd[i]-base;
 	}
+	//esp+8 is valued to argv
+	sf->esp -= 12;
+	char ***argvd=(void*)sf->esp+8+base;
+	*argvd=(void *)p-base;
+	//esp+4 is valued to argc
+	int *argcd=(void*)sf->esp+4+base;
+	*argcd=argc;
+	//why after exec,the esp is at where we expect?
 	return;
 
 

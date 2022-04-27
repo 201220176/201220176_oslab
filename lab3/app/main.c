@@ -21,7 +21,12 @@ int uEntry(void) {
 			//sleep(1);
 			sleep(60);
 		}
-		exec(221, 20);
+		char argv[3][10]={"cat","a.txt","b.txt"};
+		char *p1[3];
+		for(int i=0;i<3;++i)
+			p1[i]=argv[i];
+		exec(221, 20,3,p1);
+
 		exit();
 	}
 	else if (ret != -1) {
