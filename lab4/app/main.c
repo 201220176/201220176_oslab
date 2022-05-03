@@ -8,7 +8,7 @@
 
 int uEntry(void) {
 
-/*
+
 	// 测试scanf	
 	int dec = 0;
 	int hex = 0;
@@ -57,7 +57,7 @@ int uEntry(void) {
 		sem_destroy(&sem);
 		exit();
 	}
-*/
+
 	
 
 	// For lab4.3
@@ -66,7 +66,7 @@ int uEntry(void) {
 	// Requirements are demonstrated in the guide.
 	
 	//哲学家
-	
+	/*
 	int j=0;
 	int ret;
 	sem_t forks[5];
@@ -106,6 +106,7 @@ int uEntry(void) {
         sem_post(&forks[(j+1)%5]);
 		sleep(128);				//
 	}
+	*/
 
 
 
@@ -114,8 +115,57 @@ int uEntry(void) {
 
 
 
-
+/*
 	//生产者消费者问题
+sem_t mutex;
+sem_t empty;
+sem_t full;
+sem_init(&empty,5);     	 //可以使用的空缓冲区数
+sem_init(&full,0);  			 //缓冲区内可以使用的产品数
+sem_init(&mutex,1);      	//互斥信号量
+int in=0;								//放入缓冲区指针
+int out=0;                         	//取出缓冲区指针
+
+	int j=0;
+	int ret;
+
+	for(;j<4;++j)
+	{
+		ret = fork();
+		if(ret == 0)
+			break;
+		else if(ret < 0)
+		{
+			printf("fork error\n");
+			exit(1);
+		}
+	}
+
+	while(1)
+	{
+		if(j==4)//consumer
+		{
+			sem_wait(&full);
+			sem_wait(&mutex);
+			out=(out+1)%5;
+			sem_post(&mutex);
+			sem_post(&empty);
+			printf("Consumer : consume\n");
+			sleep(128);	
+
+		}
+		else//producer
+		{
+			sem_wait(&empty);
+			sem_wait(&mutex);
+			in=(in+1)%5;  
+			printf("Producer %d: produce\n", j);
+			sleep(128);	
+			sem_post(&mutex); 
+			sem_post(&full);
+		}
+	}
+	*/
 
 	//读者写者问题
 	
