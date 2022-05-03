@@ -57,8 +57,8 @@ int uEntry(void) {
 		sem_destroy(&sem);
 		exit();
 	}
-
-	*/
+*/
+	
 
 	// For lab4.3
 	// TODO: You need to design and test the philosopher problem.
@@ -66,6 +66,7 @@ int uEntry(void) {
 	// Requirements are demonstrated in the guide.
 	
 	//哲学家
+	
 	int j=0;
 	int ret;
 	sem_t forks[5];
