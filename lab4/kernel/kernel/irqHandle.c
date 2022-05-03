@@ -299,15 +299,82 @@ void syscallRead(struct StackFrame *sf) {
 
 void syscallReadStdIn(struct StackFrame *sf) {
 	// TODO: 完成标准输入
+	putChar('R');
 
 	if(dev[STD_IN].value<0){
 		//TODO
+		putChar('-');
+		pcb[current].regs.eax = -1;
 	}
 	else if(dev[STD_IN].value==0){
 		//TODO
+		putChar('0');
+		dev[STD_IN].value--;
+
+		pcb[current].blocked.next = dev[STD_IN].pcb.next;
+		pcb[current].blocked.prev = &(dev[STD_IN].pcb);
+		dev[STD_IN].pcb.next = &(pcb[current].blocked);
+		(pcb[current].blocked.next)->prev = &(pcb[current].blocked);
+		//make this process blocked
+		pcb[current].state = STATE_BLOCKED;
+		asm volatile("int $0x20");
+
+		int sel = sf->ds;
+		char *str = (char *)sf->edx;
+		int size = sf->ebx;
+
+		putNum(size);
+		putChar('\n');
+
+		int i = 0;
+		char character = 0;
+		asm volatile("movw %0, %%es" ::"m"(sel));
+		while (i < size - 1)
+		{
+			if (bufferHead != bufferTail)
+			{
+				character = keyBuffer[bufferHead];
+				bufferHead = (bufferHead + 1) % MAX_KEYBUFFER_SIZE;
+				putChar(character);
+				asm volatile("movb %0, %%es:(%1)" ::"r"(character), "r"(str + i));
+				i++;
+			}
+			else
+				break;
+		}
+		asm volatile("movb $0, %%es:(%0)" ::"r"(str + i));
+		pcb[current].regs.eax = i;
 	}
 	else if(dev[STD_IN].value>0){
 		//TODO
+		putChar('1');
+		dev[STD_IN].value--;
+		
+		int sel = sf->ds;
+		char *str = (char *)sf->edx;
+		int size = sf->ebx;
+
+		putNum(size);
+		putChar('\n');
+
+		int i = 0;
+		char character = 0;
+		asm volatile("movw %0, %%es" ::"m"(sel));
+		while (i < size - 1)
+		{
+			if (bufferHead != bufferTail)
+			{
+				character = keyBuffer[bufferHead];
+				bufferHead = (bufferHead + 1) % MAX_KEYBUFFER_SIZE;
+				putChar(character);
+				asm volatile("movb %0, %%es:(%1)" ::"r"(character), "r"(str + i));
+				i++;
+			}
+			else
+				break;
+		}
+		asm volatile("movb $0, %%es:(%0)" ::"r"(str + i));
+		pcb[current].regs.eax = i;
 
 	}
 }
