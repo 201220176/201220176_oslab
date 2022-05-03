@@ -8,6 +8,7 @@
 
 int uEntry(void) {
 
+/*
 	// 测试scanf	
 	int dec = 0;
 	int hex = 0;
@@ -57,12 +58,61 @@ int uEntry(void) {
 		exit();
 	}
 
+	*/
+
 	// For lab4.3
 	// TODO: You need to design and test the philosopher problem.
 	// Note that you can create your own functions.
 	// Requirements are demonstrated in the guide.
 	
 	//哲学家
+	int j=0;
+	int ret;
+	sem_t forks[5];
+	sem_t mutex;
+	sem_init(&mutex, 1);
+	for (int i=0;i<5;i++)
+    	sem_init(&forks[i], 1);
+
+	for(;j<4;++j)
+	{
+		ret = fork();
+		if(ret == 0)
+			break;
+		else if(ret < 0)
+		{
+			printf("fork error\n");
+			exit(1);
+		}
+	}
+
+	while(1)
+	{
+		printf("Philosopher %d: think\n", j);
+		sleep(128);
+       	sem_wait(&mutex);
+		sleep(128);				//
+        sem_wait(&forks[j]);
+		sleep(128);				//
+        sem_wait(&forks[(j+1)%5]);
+		sleep(128);				//
+        sem_post(&mutex);
+		sleep(128);				//
+        printf("Philosopher %d: eat\n", j);
+		sleep(128);
+        sem_post(&forks[j]);
+		sleep(128);				//
+        sem_post(&forks[(j+1)%5]);
+		sleep(128);				//
+	}
+
+
+
+	
+	
+
+
+
 
 	//生产者消费者问题
 
