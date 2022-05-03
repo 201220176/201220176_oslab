@@ -42,9 +42,6 @@ int sem_post(sem_t *sem);
 
 int sem_destroy(sem_t *sem);
 
-int cnt_plus();
-int cnt_sub();
-int cnt_read();
-int cnt_init();
+
 
 #endif

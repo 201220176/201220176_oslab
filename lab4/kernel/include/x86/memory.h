@@ -75,7 +75,7 @@ typedef struct Device Device;
 
 #define MAX_TIME_COUNT 16
 
-int sys_cnt;
+
 
 
 struct ProcessTable {

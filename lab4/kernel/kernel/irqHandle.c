@@ -45,7 +45,7 @@ void syscallExec(struct StackFrame *sf);
 void syscallSleep(struct StackFrame *sf);
 void syscallExit(struct StackFrame *sf);
 void syscallSem(struct StackFrame *sf);
-void syscallCnt(struct StackFrame *sf);
+
 
 
 void syscallWriteStdOut(struct StackFrame *sf);
