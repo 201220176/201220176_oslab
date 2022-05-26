@@ -26,6 +26,11 @@
 #define SEM_POST 2
 #define SEM_DESTROY 3
 
+#define O_WRITE 0x01
+#define O_READ 0x02
+#define O_CREATE 0x04
+#define O_DIRECTORY 0x08
+
 extern TSS tss;
 
 extern ProcessTable pcb[MAX_PCB_NUM];
@@ -233,16 +238,35 @@ void syscallOpen(struct StackFrame *sf) {
 	int destInodeOffset = 0;
 
 	ret = readInode(&sBlock, gDesc, &destInode, &destInodeOffset, str);
-
+	int  Flags= sf->edx;
 	if (ret == 0) { // file exist
 		// TODO: Open1
 		// 错误处理，在目标文件存在的条件下，flags设置的类型与该文件实际类型不一致，返回-1
-		
+		if((Flags>>2)!=destInode.type)
+		{
+				print("the file type not match\n");
+				sf->eax=-1;
+				return;
+		}
 
 		//TODO: Open2
 		// 错误处理，判断是否已经被打开，如果已经被打开就返回-1（遍历dev和file数组）
-
-		
+		for(i=0;i<MAX_FILE_NUM;i++){
+			if(file[i].state==1&&file[i].inodeOffset == destInodeOffset)
+			{
+				print("the file had been openned\n");
+				sf->eax=-1;
+				return;
+			}
+		}
+		for(i=0;i<MAX_DEV_NUM;i++){
+			if(dev[i].state==1&&dev[i].inodeOffset == destInodeOffset)
+			{
+				print("the dev file had been openned\n");
+				sf->eax=-1;
+				return;
+			}
+		}
 
 		//if there is no error, open the file
 		for(i=0;i<MAX_FILE_NUM;i++){
@@ -267,19 +291,78 @@ void syscallOpen(struct StackFrame *sf) {
 
 		//TODO: Open3
 		//错误处理，不存在这个文件，并且O_CREATE没有被设置（O_CREATE如何判断，参考上面或者下面）
-
+		if(!(Flags & O_CREATE))
+		{
+			print("file not exist ,and the O_CREATE not be set\n");
+			sf->eax = -1;
+			return;
+		}
 
 		if ((sf->edx >> 3) % 2 == 0) { 
 			//TODO: Open4        
 			// 到了这里，目标文件不存在，并且CREATE位设置为1，并且要创建的目标文件是一个常规文件
 			// Hint: readInode allocInode
-
+			if (str[stringLen(str) - 1] == '/')
+					str[stringLen(str) - 1] = 0;
+			stringChrR(str, '/', &size);
+			if (size == stringLen(str))
+			{
+				print("file not exist ,and the father path is not exist too\n");
+				sf->eax = -1;
+				return;
+			}
+			char fatherPath[NAME_LENGTH];
+			if (size == 0)
+			{
+				fatherPath[0] = '/';
+				fatherPath[1] = 0;
+			}
+			else
+				stringCpy(str, fatherPath, size);
+			
+			
+			ret = readInode(&sBlock,gDesc, &fatherInode, &fatherInodeOffset, fatherPath);
+			//father not exist
+			if (ret == -1)
+			{
+				sf->eax = -1;
+				return;
+			}
+			allocInode(&sBlock,  gDesc,&fatherInode, fatherInodeOffset, &destInode, &destInodeOffset, str + size + 1,REGULAR_TYPE);
 
 		}
 		else { 
 			//TODO: Open5        
 			// 目标文件不存在，并且CREATE位设置为1，并且要创建的目标文件是一个目录文件
 			// Hint: readInode allocInode
+			if (str[stringLen(str) - 1] == '/')
+					str[stringLen(str) - 1] = 0;
+			stringChrR(str, '/', &size);
+			if (size == stringLen(str))
+			{
+				print("file not exist ,and the father path is not exist too\n");
+				sf->eax = -1;
+				return;
+			}
+			char fatherPath[NAME_LENGTH];
+			if (size == 0)
+			{
+				fatherPath[0] = '/';
+				fatherPath[1] = 0;
+			}
+			else
+				stringCpy(str, fatherPath, size);
+			
+			
+			ret = readInode(&sBlock,gDesc, &fatherInode, &fatherInodeOffset, fatherPath);
+			//father not exist
+			if (ret == -1)
+			{
+				print("不存在这个文件,并且需要创建的文件的路径不存在");
+				sf->eax = -1;
+				return;
+			}
+			allocInode(&sBlock,  gDesc,&fatherInode, fatherInodeOffset, &destInode, &destInodeOffset, str + size + 1,DIRECTORY_TYPE);
 			
 		}
 
@@ -312,7 +395,16 @@ void syscallWrite(struct StackFrame *sf) {
 
 	// TODO: Write1        
 	// 如果要向文件里写入，在这里进行错误处理：超出文件范围或者该文件没有打开，返回-1
+	if(sf->ecx!=STD_OUT)
+	{
+		if (sf->ecx < MAX_DEV_NUM || sf->ecx >  MAX_DEV_NUM + MAX_FILE_NUM||file[sf->ecx - MAX_DEV_NUM].state == 0) 
+		{
 
+			print("syscallWrite: the file not open or exceed the limit\n");
+			sf->eax=-1;
+			return;
+		}
+	}
 	syscallWriteFile(sf);
 	return;
 }
@@ -393,11 +485,16 @@ void syscallWriteFile(struct StackFrame *sf) {
 	// 使用 writeBlock 把 buffer 的内容写回数据
 	// 这个比较麻烦，要分清楚 quotient、remainder、j 这些都是什么
 	// 
+	readBlock(&sBlock, &inode, file[sf->ecx - MAX_DEV_NUM].offset / sBlock.blockSize, buffer);
+	MemCpy(&str,&buffer,sz);
+	writeBlock(&sBlock, &inode, file[sf->ecx - MAX_DEV_NUM].offset / sBlock.blockSize, buffer);
 
 
 	// TODO: WriteFile2
 	// 这里把inode修改后写回磁盘（inode的size需要修改）
 	// 使用 diskWrite 函数
+	inode.size = (file[sf->ecx - MAX_DEV_NUM].offset + sz > inode.size) ? (file[sf->ecx - MAX_DEV_NUM].offset + sz) : inode.size;
+	diskWrite(&inode, sizeof(Inode), 1, file[sf->ecx - MAX_DEV_NUM].inodeOffset);
 
 
 
